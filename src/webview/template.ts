@@ -17,6 +17,7 @@ export function getHtmlForWebview(
     const fontFamilySetting = config.get<string>('fontFamily', 'sans-serif');
     const imagePublicPath = config.get<string>('imagePublicPath', '');
     const enableSlashCommand = config.get<boolean>('enableSlashCommand', true);
+    const tableDisplayMode = config.get<string>('tableDisplayMode', 'scroll');
     const fontFamilyCss =
       fontFamilySetting === 'serif'
         ? "'Merriweather', 'Georgia', serif !important"
@@ -779,7 +780,7 @@ export function getHtmlForWebview(
                     }
                 </style>
             </head>
-            <body>
+            <body class="table-mode-${tableDisplayMode}">
                 <div class="toolbar">
                     <div class="dropdown">
                         <button title="History" style="padding-right: 2px;">
@@ -902,6 +903,10 @@ export function getHtmlForWebview(
                     <div class="divider"></div>
                     <button id="btn-toggle" title="Toggle Source Mode">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-code-xml"><path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/></svg>
+                    </button>
+                    <div class="divider"></div>
+                    <button id="btn-open-text" title="Open in VS Code Text Editor">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-expand"><path d="m21 21-6-6m6 6v-4.8m0 4.8h-4.8M3 21l6-6M3 21v-4.8M3 21h4.8M3 3l6 6M3 3v4.8M3 3h4.8M21 3l-6 6M21 3v4.8M21 3h-4.8"/></svg>
                     </button>
                 </div>
 

@@ -65,7 +65,12 @@ export async function initMilkdown(initialText: string) {
               }
             }, 0);
           }
-          state.lastMarkdown = markdownToRender;
+          // Clean up aggressive escapes and auto-links per user feedback
+          let cleanedMarkdown = markdownToRender
+            .replace(/\\([!\[\]()_])/g, '$1') // Remove backslash escapes before image/link chars and underscores
+            .replace(/<([^>]+:\/\/[^>]+)>/g, '$1'); // Remove angle brackets around URLs
+
+          state.lastMarkdown = cleanedMarkdown;
 
           if (vscode) {
             vscode.postMessage({

@@ -18,12 +18,26 @@ import { searchPluginKey } from '../plugins/search';
 let targetImage: HTMLImageElement | null = null;
 
 export function setupUIEvents() {
+  // Intercept programmatic window.open calls (e.g. from Milkdown tooltip plugins)
+  const originalOpen = window.open;
+  window.open = function(url?: string | URL, target?: string, features?: string): Window | null {
+    if (url) {
+      const urlStr = url.toString();
+      if (vscode) {
+        vscode.postMessage({ type: 'openLink', value: urlStr, resolvedValue: urlStr });
+      }
+      return null;
+    }
+    return originalOpen.apply(window, [url, target, features]);
+  };
+
   setupImageObserver();
   setupToolbarEvents();
   setupContextMenuEvents();
   setupTableModalEvents();
   setupFindWidgetEvents();
   setupOtherEvents();
+  setupBookmarkTooltip();
 }
 
 function setupImageObserver() {
@@ -47,9 +61,11 @@ function setupImageObserver() {
                   : '';
                 img.setAttribute('data-raw-src', originalSrc);
                 if (state.workspaceRoot) {
-                  img.src = state.workspaceRoot + prefix + originalSrc;
+                  const root = state.workspaceRoot.endsWith('/') ? state.workspaceRoot.slice(0, -1) : state.workspaceRoot;
+                  const path = (prefix + originalSrc).replace(/\/\//g, '/');
+                  img.src = root + path;
                 } else {
-                  img.src = prefix + originalSrc;
+                  img.src = (prefix + originalSrc).replace(/\/\//g, '/');
                 }
               } else if (originalSrc && !img.hasAttribute('data-raw-src')) {
                 img.setAttribute('data-raw-src', originalSrc);
@@ -61,7 +77,7 @@ function setupImageObserver() {
         const img = mutation.target as HTMLImageElement;
         const originalSrc = img.getAttribute('src');
         if (originalSrc && originalSrc.startsWith('/')) {
-          if (originalSrc.startsWith('vscode-webview:')) return;
+          if (originalSrc.startsWith('vscode-webview:') || originalSrc.startsWith('https://file+.vscode-resource')) return;
           const prefix = state.publicPathPrefix
             ? state.publicPathPrefix.startsWith('/')
               ? state.publicPathPrefix
@@ -73,9 +89,11 @@ function setupImageObserver() {
           ) {
             img.setAttribute('data-raw-src', originalSrc);
             if (state.workspaceRoot) {
-              img.src = state.workspaceRoot + prefix + originalSrc;
+              const root = state.workspaceRoot.endsWith('/') ? state.workspaceRoot.slice(0, -1) : state.workspaceRoot;
+              const path = (prefix + originalSrc).replace(/\/\//g, '/');
+              img.src = root + path;
             } else {
-              img.src = prefix + originalSrc;
+              img.src = (prefix + originalSrc).replace(/\/\//g, '/');
             }
           }
         }
@@ -102,6 +120,24 @@ function setupImageObserver() {
       }
     }
   });
+
+  const linkInterceptor = (e: Event) => {
+    const path = e.composedPath();
+    const link = path.find((node) => node instanceof HTMLElement && node.tagName === 'A') as HTMLAnchorElement;
+    if (link) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.type === 'click' && vscode) {
+        const hrefAttr = link.getAttribute('href');
+        const hrefProp = link.href;
+        vscode.postMessage({ type: 'openLink', value: hrefAttr, resolvedValue: hrefProp });
+      }
+    }
+  };
+
+  document.addEventListener('click', linkInterceptor, true);
+  document.addEventListener('mousedown', linkInterceptor, true);
+  document.addEventListener('auxclick', linkInterceptor, true);
 }
 
 function setupToolbarEvents() {
@@ -289,6 +325,10 @@ function setupToolbarEvents() {
     }
   });
 
+  document.getElementById('btn-open-text')?.addEventListener('click', () => {
+    vscode.postMessage({ type: 'openInTextEditor' });
+  });
+
   document.getElementById('btn-toc')?.addEventListener('click', () => {
     if (vscode) {
       vscode.postMessage({ type: 'insertTOC' });
@@ -388,7 +428,22 @@ function setupContextMenuEvents() {
 
   document.getElementById('ctx-img-rename')?.addEventListener('click', () => {
     if (targetImage && vscode) {
-      const rawSrc = targetImage.getAttribute('data-raw-src') || targetImage.getAttribute('src');
+      let rawSrc = targetImage.getAttribute('data-raw-src') || targetImage.getAttribute('src') || '';
+      
+      // Fallback if data-raw-src was lost and src contains vscode internal uri
+      if (rawSrc.startsWith('vscode-webview:') || rawSrc.startsWith('https://file+.vscode-resource')) {
+        const root = state.workspaceRoot ? (state.workspaceRoot.endsWith('/') ? state.workspaceRoot.slice(0, -1) : state.workspaceRoot) : '';
+        if (root && rawSrc.includes(root)) {
+           rawSrc = rawSrc.substring(rawSrc.indexOf(root) + root.length);
+           // Remove publicPathPrefix if it was added
+           const prefix = state.publicPathPrefix ? (state.publicPathPrefix.startsWith('/') ? state.publicPathPrefix : '/' + state.publicPathPrefix) : '';
+           if (prefix && rawSrc.startsWith(prefix)) {
+             rawSrc = rawSrc.substring(prefix.length);
+             if (!rawSrc.startsWith('/')) rawSrc = '/' + rawSrc;
+           }
+        }
+      }
+
       vscode.postMessage({
         type: 'renameImage',
         src: rawSrc,
@@ -399,7 +454,20 @@ function setupContextMenuEvents() {
 
   document.getElementById('ctx-img-reveal')?.addEventListener('click', () => {
     if (targetImage && vscode) {
-      const rawSrc = targetImage.getAttribute('data-raw-src') || targetImage.getAttribute('src');
+      let rawSrc = targetImage.getAttribute('data-raw-src') || targetImage.getAttribute('src') || '';
+      
+      if (rawSrc.startsWith('vscode-webview:') || rawSrc.startsWith('https://file+.vscode-resource')) {
+        const root = state.workspaceRoot ? (state.workspaceRoot.endsWith('/') ? state.workspaceRoot.slice(0, -1) : state.workspaceRoot) : '';
+        if (root && rawSrc.includes(root)) {
+           rawSrc = rawSrc.substring(rawSrc.indexOf(root) + root.length);
+           const prefix = state.publicPathPrefix ? (state.publicPathPrefix.startsWith('/') ? state.publicPathPrefix : '/' + state.publicPathPrefix) : '';
+           if (prefix && rawSrc.startsWith(prefix)) {
+             rawSrc = rawSrc.substring(prefix.length);
+             if (!rawSrc.startsWith('/')) rawSrc = '/' + rawSrc;
+           }
+        }
+      }
+
       vscode.postMessage({
         type: 'revealImage',
         src: rawSrc,
@@ -702,6 +770,52 @@ function setupOtherEvents() {
           state.isUpdatingFromVSCode = false;
         }, 50);
       }
+    }
+  });
+}
+
+function setupBookmarkTooltip() {
+  const tooltip = document.createElement('div');
+  tooltip.id = 'bookmark-tooltip';
+  tooltip.className = 'bookmark-tooltip';
+  tooltip.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-square-text" style="vertical-align: text-bottom; margin-right: 4px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M13 8H7"/><path d="M17 12H7"/></svg> Add Annotation';
+  document.body.appendChild(tooltip);
+
+  let hideTimeout: any;
+
+  document.addEventListener('selectionchange', () => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || selection.toString().trim().length === 0) {
+      tooltip.classList.remove('visible');
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+
+    tooltip.style.left = `${rect.left + (rect.width / 2) - 50}px`;
+    tooltip.style.top = `${rect.top - 40}px`;
+    tooltip.classList.add('visible');
+
+    if (hideTimeout) clearTimeout(hideTimeout);
+    hideTimeout = setTimeout(() => {
+      tooltip.classList.remove('visible');
+    }, 3000);
+  });
+
+  tooltip.addEventListener('mousedown', (e) => {
+    e.preventDefault(); // Prevent losing focus and selection
+    const selection = window.getSelection();
+    if (selection) {
+      vscode.postMessage({ type: 'addBookmark', text: selection.toString().trim() });
+      tooltip.classList.remove('visible');
+      
+      // Optionally show a notification in webview
+      const notif = document.createElement('div');
+      notif.className = 'bookmark-notification';
+      notif.innerText = 'Annotation Added!';
+      document.body.appendChild(notif);
+      setTimeout(() => notif.remove(), 2000);
     }
   });
 }

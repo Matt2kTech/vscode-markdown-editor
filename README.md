@@ -1,7 +1,7 @@
 # Obsidian-Style Markdown Live Editor for VS Code
 
-[![VS Code Extension](https://img.shields.io/badge/VS%20Code-Extension-blue?style=flat&logo=visual-studio-code)](https://marketplace.visualstudio.com/items?itemName=vnstock.obsidian-markdown-live-editor)
-[![GitHub Repository](https://img.shields.io/badge/GitHub-Repository-181717?style=flat&logo=github)](https://github.com/thinh-vu/vscode-markdown-editor)
+[![VS Code Extension](https://img.shields.io/badge/VS%20Code-Extension-blue?style=flat\&logo=visual-studio-code)](https://marketplace.visualstudio.com/items?itemName=vnstock.obsidian-markdown-live-editor)
+[![GitHub Repository](https://img.shields.io/badge/GitHub-Repository-181717?style=flat\&logo=github)](https://github.com/thinh-vu/vscode-markdown-editor)
 [![License](https://img.shields.io/badge/License-GPL--3.0-green?style=flat)](LICENSE.txt)
 
 A blazing-fast, **Obsidian-style Markdown WYSIWYG editor** built natively as a **VS Code extension**. Experience seamless **real-time preview**, rich text formatting, and frictionless note-taking directly inside your code editor. This extension serves as the ultimate **VS Code Markdown alternative**, bringing the aesthetic and productivity of Notion and Obsidian to your IDE.

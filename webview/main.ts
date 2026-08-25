@@ -1,9 +1,9 @@
-
 import 'katex/dist/katex.min.css';
 import '@milkdown/theme-nord/style.css';
 import '@milkdown/prose/view/style/prosemirror.css';
 import 'prism-themes/themes/prism-nord.css';
 import './ui/style.css';
+import './ui/bookmark.css';
 
 import { initMilkdown } from './editor/milkdown';
 import { setupMessageListener } from './communication';

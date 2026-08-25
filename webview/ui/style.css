@@ -45,3 +45,53 @@
   text-align: center;
   display: inline-block;
 }
+
+/* Table Display Modes */
+
+/* 1. Mode: WRAP (Fit to page, wrap words aggressively, columns have equal width) */
+.table-mode-wrap .milkdown .tableWrapper table, 
+.table-mode-wrap .milkdown-theme-nord.prose table,
+.table-mode-wrap table {
+  table-layout: fixed !important;
+  width: 100% !important;
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+.table-mode-wrap .milkdown .tableWrapper td, 
+.table-mode-wrap .milkdown .tableWrapper th,
+.table-mode-wrap .milkdown-theme-nord.prose td,
+.table-mode-wrap .milkdown-theme-nord.prose th,
+.table-mode-wrap table td, 
+.table-mode-wrap table th {
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+/* 2. Mode: SCROLL (Auto layout, columns size by content, horizontal scroll for wide tables) */
+.table-mode-scroll .milkdown .tableWrapper {
+  overflow-x: auto !important;
+  max-width: 100%;
+}
+
+.table-mode-scroll .milkdown .tableWrapper table, 
+.table-mode-scroll .milkdown-theme-nord.prose table,
+.table-mode-scroll table {
+  table-layout: auto !important;
+  width: max-content !important;
+  min-width: 100% !important;
+}
+
+.table-mode-scroll .milkdown .tableWrapper td, 
+.table-mode-scroll .milkdown .tableWrapper th,
+.table-mode-scroll .milkdown-theme-nord.prose td,
+.table-mode-scroll .milkdown-theme-nord.prose th,
+.table-mode-scroll table td, 
+.table-mode-scroll table th {
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: anywhere !important;
+}

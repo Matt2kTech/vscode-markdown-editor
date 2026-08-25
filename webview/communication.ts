@@ -70,12 +70,15 @@ export function setupMessageListener() {
             selection: { anchor: selection.from + message.text.length }
           });
         } else if (state.editor) {
+          state.forceSync = true;
           state.editor.action(insert(message.text));
+          setTimeout(() => { state.forceSync = false; }, 100);
         }
         break;
 
       case 'replaceFootnote':
         if (state.editor) {
+          state.forceSync = true;
           state.editor.action((ctx: any) => {
             const view = ctx.get(editorViewCtx);
             const { state: pmState, dispatch } = view;
@@ -112,12 +115,15 @@ export function setupMessageListener() {
 
       case 'insertLinkWithUrl':
         if (state.editor && message.url) {
+          state.forceSync = true;
           state.editor.action(callCommand(toggleLinkCommand.key, { href: message.url }));
+          setTimeout(() => { state.forceSync = false; }, 100);
         }
         break;
 
       case 'insertImage':
         if (state.editor) {
+          state.forceSync = true;
           state.editor.action((ctx: any) => {
              const view = ctx.get(editorViewCtx);
              const { state: pmState, dispatch } = view;
@@ -126,6 +132,7 @@ export function setupMessageListener() {
              const tr = pmState.tr.insert(pastePos, imageNode);
              dispatch(tr);
           });
+          setTimeout(() => { state.forceSync = false; }, 100);
         }
         break;
 
@@ -144,65 +151,73 @@ export function setupMessageListener() {
 export function handleVSCodeCommand(command: string) {
   if (!state.editor) return;
 
+  const withForceSync = (action: () => void) => {
+    state.forceSync = true;
+    action();
+    setTimeout(() => { state.forceSync = false; }, 100);
+  };
+
   switch (command) {
     case 'sendToAI':
-      state.editor.action((ctx) => {
-        const view = ctx.get(editorViewCtx);
-        const { state: pmState } = view;
-        const selectedText = pmState.doc.textBetween(
-          pmState.selection.from,
-          pmState.selection.to,
-          '\n',
-        );
+      withForceSync(() => {
+        state.editor!.action((ctx) => {
+          const view = ctx.get(editorViewCtx);
+          const { state: pmState } = view;
+          const selectedText = pmState.doc.textBetween(
+            pmState.selection.from,
+            pmState.selection.to,
+            '\n',
+          );
 
-        if (selectedText && vscode) {
-          vscode.postMessage({ type: 'sendToAI', text: selectedText });
-        }
+          if (selectedText && vscode) {
+            vscode.postMessage({ type: 'sendToAI', text: selectedText });
+          }
+        });
       });
       break;
     case 'insertLink':
-      state.editor.action(callCommand(toggleLinkCommand.key));
+      withForceSync(() => state.editor!.action(callCommand(toggleLinkCommand.key)));
       break;
     case 'save':
       if (vscode) vscode.postMessage({ type: 'save' });
       break;
     case 'insertTable':
-      state.editor.action(
+      withForceSync(() => state.editor!.action(
         insert(`\n| Column 1 | Column 2 |\n| -------- | -------- |\n| Text     | Text     |\n`),
-      );
+      ));
       break;
     case 'insertHeading1':
-      state.editor.action(callCommand(wrapInHeadingCommand.key, 1));
+      withForceSync(() => state.editor!.action(callCommand(wrapInHeadingCommand.key, 1)));
       break;
     case 'insertHeading2':
-      state.editor.action(callCommand(wrapInHeadingCommand.key, 2));
+      withForceSync(() => state.editor!.action(callCommand(wrapInHeadingCommand.key, 2)));
       break;
     case 'insertHeading3':
-      state.editor.action(callCommand(wrapInHeadingCommand.key, 3));
+      withForceSync(() => state.editor!.action(callCommand(wrapInHeadingCommand.key, 3)));
       break;
     case 'insertHeading4':
-      state.editor.action(callCommand(wrapInHeadingCommand.key, 4));
+      withForceSync(() => state.editor!.action(callCommand(wrapInHeadingCommand.key, 4)));
       break;
     case 'insertHeading5':
-      state.editor.action(callCommand(wrapInHeadingCommand.key, 5));
+      withForceSync(() => state.editor!.action(callCommand(wrapInHeadingCommand.key, 5)));
       break;
     case 'insertHeading6':
-      state.editor.action(callCommand(wrapInHeadingCommand.key, 6));
+      withForceSync(() => state.editor!.action(callCommand(wrapInHeadingCommand.key, 6)));
       break;
     case 'insertCodeBlock':
-      state.editor.action(callCommand(createCodeBlockCommand.key));
+      withForceSync(() => state.editor!.action(callCommand(createCodeBlockCommand.key)));
       break;
     case 'insertBlockquote':
-      state.editor.action(callCommand(wrapInBlockquoteCommand.key));
+      withForceSync(() => state.editor!.action(callCommand(wrapInBlockquoteCommand.key)));
       break;
     case 'insertImage':
-      state.editor.action(insert(`\n![image]()\n`));
+      withForceSync(() => state.editor!.action(insert(`\n![image]()\n`)));
       break;
     case 'toggleBold':
-      state.editor.action(callCommand(toggleStrongCommand.key));
+      withForceSync(() => state.editor!.action(callCommand(toggleStrongCommand.key)));
       break;
     case 'toggleItalic':
-      state.editor.action(callCommand(toggleEmphasisCommand.key));
+      withForceSync(() => state.editor!.action(callCommand(toggleEmphasisCommand.key)));
       break;
   }
 }

@@ -52,6 +52,7 @@ export class MarkdownLiveProvider implements vscode.CustomTextEditorProvider {
   constructor(private readonly context: vscode.ExtensionContext) {}
 
   public isUpdatingFromWebview = false;
+  public lastReceivedText: string | undefined = undefined;
 
   public async resolveCustomTextEditor(
     document: vscode.TextDocument,
@@ -171,6 +172,11 @@ export class MarkdownLiveProvider implements vscode.CustomTextEditorProvider {
     // Listen for document changes (e.g. from git pull or external editor)
     const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument((e) => {
       if (e.document.uri.toString() === document.uri.toString()) {
+        const currentText = document.getText().replace(/\r\n/g, '\n');
+        if (this.lastReceivedText !== undefined && this.lastReceivedText === currentText) {
+          // This change was triggered by our own updateTextDocument, so don't echo it back
+          return;
+        }
         updateWebview();
       }
     });
@@ -195,11 +201,18 @@ export class MarkdownLiveProvider implements vscode.CustomTextEditorProvider {
   }
 
   public async updateTextDocument(document: vscode.TextDocument, newText: string) {
-    const normalize = (str: string) => str.replace(/\r\n/g, '\n');
-    if (normalize(document.getText()) === normalize(newText)) return;
+    let cleanedText = newText;
+    // Remove <> from links and encode spaces to keep them CommonMark compliant
+    cleanedText = cleanedText.replace(/\[([^\]]*)\]\(<([^>]+)>\)/g, (match, p1, p2) => {
+      return `[${p1}](${p2.replace(/ /g, '%20')})`;
+    });
 
+    const normalize = (str: string) => str.replace(/\r\n/g, '\n');
+    if (normalize(document.getText()) === normalize(cleanedText)) return;
+
+    this.lastReceivedText = normalize(cleanedText);
     const edit = new vscode.WorkspaceEdit();
-    edit.replace(document.uri, new vscode.Range(0, 0, document.lineCount, 0), newText);
+    edit.replace(document.uri, new vscode.Range(0, 0, document.lineCount, 0), cleanedText);
     await vscode.workspace.applyEdit(edit);
   }
 

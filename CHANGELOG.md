@@ -5,6 +5,51 @@ All notable changes to the "obsidian-markdown-live-editor" extension will be doc
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.1.4
+
+### ✨ New Features
+* **Default Editor Experience**: The Obsidian-style Live Editor is now set as the default editor for all `.md` files. When you click a file in the explorer, it opens directly in this rich WYSIWYG environment.
+* **Smart Diff Fallback**: When viewing changes in the Source Control (Git diff) tab, VS Code will automatically fall back to its native text editor to preserve the code-level highlighting and comparison capabilities.
+
+### 🐛 Bug Fixes
+* **Link Serialization**: Fixed an issue where Milkdown would wrap links containing spaces in `<>` (angle brackets). The editor now automatically URL-encodes spaces (e.g. `%20`) to maintain strict CommonMark compliance without visually cluttering the markdown.
+* **Internal Link Navigation**: Clicking on local file links or relative links within the live editor now correctly opens them inside VS Code (using the native editor or appropriate extension) instead of attempting to open them in a web browser context.
+
+## v0.1.3
+
+### ✨ New Features
+* **Annotations System**: Select any text in the visual editor to reveal a floating "Add Annotation" tooltip. It allows you to attach personal notes/comments to text selections, which are saved to a workspace `.tmp/bookmarks.json` file.
+* **Annotations Sidebar**: A new "Annotations" tab is now available in the Markdown Live Sidebar to view your selected texts along with their attached notes and quickly jump to them.
+* **Open in Text Editor**: Added a new toolbar button (file icon) to quickly switch the current document to VS Code's default text editor.
+* **Smart Relative Paths**: Pasted images now correctly calculate their relative paths based on the current markdown file's directory instead of assuming the workspace root.
+* **Extension Categories**: Updated VS Code marketplace categories to include Formatters, Programming Languages, Machine Learning, Visualization, and Linters.
+
+### 🐛 Bug Fixes
+* **Auto-Formatting Improvements**: Refined the built-in Milkdown serializer to prevent aggressive and unnecessary backslash escaping for image and link syntax (`\![image]`), and removed forced `<>` wrappers around standard URLs.
+* **Data Sync Race Condition**: Fixed a critical 2-way sync loop bug that caused dropped characters or cursor jumps when typing rapidly or when auto-save triggers.
+
+## v0.1.2
+
+### ✨ New Features
+
+* **Table Display Options**: Added a new setting `markdownLive.tableDisplayMode` allowing you to toggle how tables are rendered in the live preview.
+  * `scroll` (Default): Auto-sizes columns based on content and enables horizontal scrolling for wide tables. This prevents short words from being broken unnaturally.
+  * `wrap`: Forces the table to fit the document width by aggressively wrapping text and URLs. Ideal for printing or narrow screens.
+
+## v0.1.1
+
+### 🐛 Bug Fixes
+
+* **Table Display**: Added automatic word wrap for Markdown tables (`table-layout: fixed`, `word-wrap: break-word`) to prevent long text and URLs from breaking the document's width.
+
+## v0.1.0
+
+### 🐛 Bug Fixes
+
+* **Image Display & Multi-root Workspaces**: Fixed critical path resolution issues that caused images to break or render incorrectly with double slashes (`//`). Enhanced support for multi-root workspaces to ensure images are saved and loaded from the correct active project folder.
+* **Rename & Reveal Image Context Menu**: Fixed an issue where renaming or revealing an image from the webview context menu would fail with a "File to move/copy does not exist" error. The editor now correctly strips internal VS Code webview URIs to recover the absolute physical file path.
+* **Echo Loop & Text Editor Interference**: Solved a critical bug where typing in the default VS Code text editor would trigger aggressive markdown formatting and backslash (`\`) injections from the Live Editor running in the background. The Live Editor now correctly respects `document.hasFocus()` before emitting edits.
+
 ## v0.0.9
 
 ### ✨ New Features

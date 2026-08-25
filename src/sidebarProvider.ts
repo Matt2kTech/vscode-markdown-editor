@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { NoteManager } from './noteManager';
+import { BookmarkManager, Bookmark } from './bookmarkManager';
 
 export class SidebarProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'markdownLive.fileBrowser';
@@ -163,8 +164,28 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
     const recentHtml = await generateHtmlList(recentFiles);
     const vaultHtml = await generateHtmlList(vaultFiles);
+    
+    // Generate Bookmarks HTML
+    const bookmarks = await BookmarkManager.getBookmarks();
+    let bookmarksHtml = '';
+    for (const bm of bookmarks) {
+       const uri = vscode.Uri.parse(bm.fileUri);
+       let title = uri.path.split('/').pop()?.replace(/\.md$/i, '') || 'Untitled';
+       bookmarksHtml += `
+         <div class="note-item" onclick="openFile('${bm.fileUri}')">
+           <div class="note-content">
+             <div class="note-title"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-square-text" style="vertical-align: middle; margin-right: 4px; color: var(--vscode-list-activeSelectionForeground);"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M13 8H7"/><path d="M17 12H7"/></svg>${escapeHtml(title)}</div>
+             <div class="note-preview"><em>"${escapeHtml(bm.text)}"</em></div>
+             <div class="note-preview" style="color: var(--vscode-textPreformat-foreground); margin-top: 4px;"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-edit-3" style="vertical-align: middle; margin-right: 4px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>${escapeHtml(bm.note || '')}</div>
+           </div>
+         </div>
+       `;
+    }
+    if (bookmarksHtml === '') {
+       bookmarksHtml = '<div class="empty-state">No annotations found.</div>';
+    }
 
-    this._view.webview.postMessage({ type: 'updateList', recentHtml, vaultHtml });
+    this._view.webview.postMessage({ type: 'updateList', recentHtml, vaultHtml, bookmarksHtml });
   }
 
   private _getHtmlForWebview() {
@@ -269,6 +290,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         <div class="tabs">
           <div class="tab active" id="tab-recent" onclick="switchTab('recent')">Recent Files</div>
           <div class="tab" id="tab-vault" onclick="switchTab('vault')">Vault Files</div>
+          <div class="tab" id="tab-bookmarks" onclick="switchTab('bookmarks')">Annotations</div>
         </div>
 
         <div class="notes-container" id="notes-recent">
@@ -277,28 +299,39 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         <div class="notes-container" id="notes-vault" style="display: none;">
           <div class="empty-state">Loading notes...</div>
         </div>
+        <div class="notes-container" id="notes-bookmarks" style="display: none;">
+          <div class="empty-state">Loading annotations...</div>
+        </div>
 
         <script>
           const vscode = acquireVsCodeApi();
           const notesVault = document.getElementById('notes-vault');
           const notesRecent = document.getElementById('notes-recent');
+          const notesBookmarks = document.getElementById('notes-bookmarks');
           const tabVault = document.getElementById('tab-vault');
           const tabRecent = document.getElementById('tab-recent');
+          const tabBookmarks = document.getElementById('tab-bookmarks');
 
           let currentTab = 'recent';
 
           function switchTab(tab) {
             currentTab = tab;
+            tabVault.classList.remove('active');
+            tabRecent.classList.remove('active');
+            tabBookmarks.classList.remove('active');
+            notesVault.style.display = 'none';
+            notesRecent.style.display = 'none';
+            notesBookmarks.style.display = 'none';
+
             if (tab === 'vault') {
               tabVault.classList.add('active');
-              tabRecent.classList.remove('active');
               notesVault.style.display = 'flex';
-              notesRecent.style.display = 'none';
+            } else if (tab === 'bookmarks') {
+              tabBookmarks.classList.add('active');
+              notesBookmarks.style.display = 'flex';
             } else {
               tabRecent.classList.add('active');
-              tabVault.classList.remove('active');
               notesRecent.style.display = 'flex';
-              notesVault.style.display = 'none';
             }
           }
 
@@ -311,6 +344,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             if (message.type === 'updateList') {
               notesVault.innerHTML = message.vaultHtml;
               notesRecent.innerHTML = message.recentHtml;
+              notesBookmarks.innerHTML = message.bookmarksHtml;
             }
           });
         </script>

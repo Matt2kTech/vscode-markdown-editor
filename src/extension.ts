@@ -26,6 +26,12 @@ export function activate(context: vscode.ExtensionContext) {
   mdWatcher.onDidChange(() => sidebarProvider.refresh());
   mdWatcher.onDidDelete(() => sidebarProvider.refresh());
 
+  context.subscriptions.push(
+    vscode.commands.registerCommand('markdown-live.refreshSidebar', () => {
+      sidebarProvider.refresh();
+    })
+  );
+
   // Register the command to open Live Editor manually
   context.subscriptions.push(
     vscode.commands.registerCommand('markdown-live.openLiveEditor', (uri?: vscode.Uri) => {

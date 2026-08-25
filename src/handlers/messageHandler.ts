@@ -1,5 +1,23 @@
 import * as vscode from 'vscode';
 import { MarkdownLiveProvider } from '../editorProvider';
+import { BookmarkManager } from '../bookmarkManager';
+
+function getRelativePath(fromPath: string, toPath: string): string {
+  const fromParts = fromPath.split('/').filter(Boolean);
+  const toParts = toPath.split('/').filter(Boolean);
+  fromParts.pop(); // Remove the filename from 'fromPath'
+  let commonIndex = 0;
+  while (
+    commonIndex < fromParts.length &&
+    commonIndex < toParts.length &&
+    fromParts[commonIndex] === toParts[commonIndex]
+  ) {
+    commonIndex++;
+  }
+  const upCount = fromParts.length - commonIndex;
+  const relParts = Array(upCount).fill('..').concat(toParts.slice(commonIndex));
+  return relParts.join('/');
+}
 
 export async function handleWebviewMessage(
   e: any,
@@ -8,6 +26,53 @@ export async function handleWebviewMessage(
   provider: MarkdownLiveProvider
 ) {
   switch (e.type) {
+        case 'openInTextEditor': {
+          vscode.commands.executeCommand('vscode.openWith', document.uri, 'default');
+          break;
+        }
+        case 'openLink': {
+          let uriToOpen: vscode.Uri | undefined;
+          
+          if (e.resolvedValue && e.resolvedValue.includes('vscode-resource.vscode-cdn.net')) {
+            try {
+              const url = new URL(e.resolvedValue);
+              let fsPath = decodeURIComponent(url.pathname);
+              if (fsPath.match(/^\/[a-zA-Z]:\//)) {
+                fsPath = fsPath.substring(1);
+              }
+              uriToOpen = vscode.Uri.file(fsPath);
+            } catch (err) {}
+          } else if (e.value) {
+            const href = decodeURIComponent(e.value);
+            if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('mailto:')) {
+              // Safety check: Never open internal CDN links in external browser
+              if (href.includes('vscode-resource.vscode-cdn.net')) {
+                break;
+              }
+              uriToOpen = vscode.Uri.parse(href);
+              vscode.env.openExternal(uriToOpen);
+              break;
+            } else {
+              // Handle local relative paths fallback
+              if (href.startsWith('/')) {
+                if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
+                   uriToOpen = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, href.slice(1));
+                }
+              } else {
+                const dir = vscode.Uri.joinPath(document.uri, '..');
+                uriToOpen = vscode.Uri.joinPath(dir, href);
+              }
+            }
+          }
+
+          if (uriToOpen) {
+            vscode.commands.executeCommand('vscode.open', uriToOpen);
+          }
+          break;
+        }
+        case 'webviewReady':
+          provider.isUpdatingFromWebview = false;
+          break;
         case 'edit':
           provider.isUpdatingFromWebview = true;
           await provider.updateTextDocument(document, e.text);
@@ -16,6 +81,21 @@ export async function handleWebviewMessage(
             provider.isUpdatingFromWebview = false;
           }, 10);
           break;
+        case 'addBookmark': {
+          if (e.text) {
+             const note = await vscode.window.showInputBox({
+                prompt: 'Enter your annotation/note for this selection:',
+                placeHolder: 'e.g. Needs review, Important fact, etc.'
+             });
+             
+             if (note !== undefined) { // If user didn't cancel
+                const id = await BookmarkManager.addBookmark(document.uri.toString(), e.text, note);
+                vscode.commands.executeCommand('markdown-live.refreshSidebar');
+                webviewPanel.webview.postMessage({ type: 'bookmarkAdded', id });
+             }
+          }
+          break;
+        }
         case 'sendToAI':
           try {
             const fileName = document.uri.path.split('/').pop() || 'markdown_context.md';
@@ -96,10 +176,10 @@ export async function handleWebviewMessage(
           break;
         }
         case 'saveImage': {
-          const workspaceFolders = vscode.workspace.workspaceFolders;
-          if (workspaceFolders && workspaceFolders.length > 0) {
+          const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
+          if (workspaceFolder) {
             try {
-              const rootUri = workspaceFolders[0].uri;
+              const rootUri = workspaceFolder.uri;
 
               // Read custom image directory from config
               const config = vscode.workspace.getConfiguration('markdownLive');
@@ -137,7 +217,11 @@ export async function handleWebviewMessage(
               await vscode.workspace.fs.writeFile(fileUri, buffer);
 
               // Generate relative path from document to image
-              const relativePath = `${imageDirSetting}/${fileName}`;
+              let relativePath = getRelativePath(document.uri.path, fileUri.path);
+              // Handle same directory case correctly (e.g., ./image.png or just image.png)
+              if (!relativePath.startsWith('.') && !relativePath.startsWith('/')) {
+                  relativePath = './' + relativePath; // optional, but standardizes it
+              }
 
               webviewPanel.webview.postMessage({
                 type: 'insertImage',
@@ -197,8 +281,8 @@ export async function handleWebviewMessage(
           }
 
           let oldFileUri: vscode.Uri;
-          const workspaceFolders = vscode.workspace.workspaceFolders;
-          const rootUri = workspaceFolders ? workspaceFolders[0].uri : undefined;
+          const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
+          const rootUri = workspaceFolder ? workspaceFolder.uri : undefined;
 
           // Support mapping public path prefix if needed when resolving physical file
           const config = vscode.workspace.getConfiguration('markdownLive');

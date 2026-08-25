@@ -1,0 +1,44 @@
+
+.bookmark-tooltip {
+  position: fixed;
+  background-color: var(--vscode-dropdown-background);
+  color: var(--vscode-dropdown-foreground);
+  border: 1px solid var(--vscode-dropdown-border);
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  z-index: 10000;
+  display: none;
+  pointer-events: auto;
+}
+
+.bookmark-tooltip.visible {
+  display: block;
+}
+
+.bookmark-tooltip:hover {
+  background-color: var(--vscode-list-hoverBackground);
+}
+
+.bookmark-notification {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: var(--vscode-notifications-background);
+  color: var(--vscode-notifications-foreground);
+  padding: 8px 16px;
+  border-radius: 4px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  z-index: 10000;
+  font-size: 12px;
+  animation: fadeInOut 2s ease-in-out;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateY(10px); }
+  10% { opacity: 1; transform: translateY(0); }
+  90% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(10px); }
+}

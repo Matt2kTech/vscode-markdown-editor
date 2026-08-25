@@ -2,7 +2,7 @@
   "name": "obsidian-markdown-live-editor",
   "displayName": "Obsidian-style Markdown Editor",
   "description": "A seamless, Obsidian-like Markdown editor for VS Code",
-  "version": "0.1.0",
+  "version": "0.1.4",
   "icon": "assets/icon.png",
   "license": "GPL-3.0",
   "keywords": [
@@ -20,7 +20,11 @@
     "vscode": "^1.85.0"
   },
   "categories": [
-    "Other"
+    "Formatters",
+    "Programming Languages",
+    "Machine Learning",
+    "Visualization",
+    "Linters"
   ],
   "browser": "./dist/extension.js",
   "activationEvents": [],
@@ -31,10 +35,15 @@
         "displayName": "Obsidian-style Markdown Editor",
         "selector": [
           {
-            "filenamePattern": "*.md"
+            "filenamePattern": "*.md",
+            "scheme": "file"
+          },
+          {
+            "filenamePattern": "*.md",
+            "scheme": "vscode-remote"
           }
         ],
-        "priority": "option"
+        "priority": "default"
       }
     ],
     "viewsContainers": {
@@ -284,6 +293,15 @@
             ],
             "default": "en",
             "description": "UI language for the Markdown Live Editor (en/vi)"
+          },
+          "markdownLive.tableDisplayMode": {
+            "type": "string",
+            "enum": [
+              "scroll",
+              "wrap"
+            ],
+            "default": "scroll",
+            "description": "Table display mode: 'scroll' (horizontal scroll for wide tables) or 'wrap' (word wrap to fit screen)."
           }
         }
       },
