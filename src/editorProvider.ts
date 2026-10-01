@@ -191,13 +191,19 @@ export class MarkdownLiveProvider implements vscode.CustomTextEditorProvider {
     });
 
     // Receive messages from webview
-    // Receive messages from webview
     webviewPanel.webview.onDidReceiveMessage(async (e) => {
+      // When the webview signals it's ready, (re)send the initial content.
+      // The webview bundle is large (~7MB) and may take longer than the
+      // fallback timer below, so the timer alone is not reliable — the
+      // ready handshake is the primary trigger.
+      if (e?.type === 'ready' || e?.type === 'webviewReady') {
+        updateWebview();
+      }
       await handleWebviewMessage(e, document, webviewPanel, this);
     });
 
-    // Wait a bit for webview to load, then send text
-    setTimeout(() => updateWebview(), 500);
+    // Fallback: wait a bit for webview to load, then send text
+    setTimeout(() => updateWebview(), 1500);
   }
 
   public async updateTextDocument(document: vscode.TextDocument, newText: string) {
